@@ -27,7 +27,7 @@ using namespace std;
 // MODELS & DATA STRUCTURES
 // ==========================================
 
-struct Post {
+struct Post { 
     int postId;
     int userId;
     string content;
@@ -44,6 +44,30 @@ struct Post {
     }
 };
 
+// Helper function that converts time into readable format
+string timeAgo(long timestamp) {
+    long currentTime = time(0); // Get current time in seconds
+    long diff = currentTime - timestamp;
+
+    if (diff < 60) {
+        return "Just now";
+    } else if (diff < 120) {
+        return "1 minute ago"; // For grammar purposes
+    } else if (diff < 3600) {
+        return to_string(diff / 60) + " minutes ago";
+    } else if (diff < 86400) {
+        return to_string(diff / 3600) + " hours ago";
+    } else if (diff < 604800) { 
+        return to_string(diff / 86400) + " days ago";
+    } else {
+        // Uses date if it's been more than a week
+        time_t t = timestamp;
+        char buffer[80];
+        strftime(buffer, 80, "%Y-%m-%d", localtime(&t));
+        return string(buffer);
+    }
+}
+
 // TODO: LAB 1 - Linked List
 class Timeline {
 public:
@@ -53,8 +77,14 @@ public:
     // Task: Add a new post to the FRONT of the list (O(1))
     void addPost(int pid, int uid, string content, int likes, long time) {
         // TODO: LAB 1
-
-
+        // Create a new Post node 
+        Post* newPost = new Post(pid, uid, content, likes, time);
+        
+        // Point the new node's pointer to the current head
+        newPost->next = head;
+        
+        // Update head to be this new node
+        head = newPost;
     }
 
     void printTimeline() {
@@ -63,7 +93,19 @@ public:
         
         // Task: Traverse the linked list and print content
         // TODO: LAB 1
+        while (current != nullptr) {
+        cout << "-----------------------------------" << endl; // Divider for aesthetics
+        // Print the post
+        cout << current->content << endl;
+        // Print timestamp and likes
+        cout << "Time: " << timeAgo(current->timestamp);
+        cout << "\nLikes: " << current->likes << endl;
+        
 
+        // Move the pointer to the next node in the list
+        current = current->next;
+        }
+        cout << "-----------------------------------" << endl;
     }
 };
 
@@ -463,7 +505,7 @@ void showMainMenu() {
         else if (choice == 3) {
             // SAFETY: Commented out to prevent data loss on initial run.
             // Students must uncomment this ONLY when Lab 1 is complete.
-            // saveData(); 
+            saveData(); 
             cout << "Goodbye! " << endl;
         }
     }
