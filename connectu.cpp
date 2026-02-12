@@ -47,7 +47,7 @@ struct Post {
 // Helper function that converts time into readable format
 string timeAgo(long timestamp) {
     long currentTime = time(0); // Get current time in seconds
-    long diff = currentTime - timestamp;
+    long diff = currentTime - timestamp; // Difference between current time and time a post was made
 
     if (diff < 60) {
         return "Just now";
@@ -95,6 +95,7 @@ public:
         // TODO: LAB 1
         while (current != nullptr) {
         cout << "-----------------------------------" << endl; // Divider for aesthetics
+        cout << "ID: " << current->userId << "\n";
         // Print the post
         cout << current->content << endl;
         // Print timestamp and likes
