@@ -191,6 +191,7 @@ public:
 vector<User*> allUsers;
 
 // TODO: LAB 2 - Hash Map
+// TODO: LAB 2 - Hash Map
 struct HashNode {
     string key;
     User* value;
@@ -205,7 +206,15 @@ private:
 
     unsigned long hashFunction(string key) {
         // TODO: LAB 2
-        return 0; 
+        unsigned long hashValue = 0;
+        int p = 31; // Prime number needed to turn strings into a psuedo-random integer to avoid collisions 
+        
+        // Loop through each character to calculate the polynomial hash
+        for (char c : key) {
+            hashValue = (hashValue * p + c) % TABLE_SIZE;
+        }
+        
+        return hashValue; 
     }
 
 public:
@@ -214,13 +223,33 @@ public:
         for (int i = 0; i < TABLE_SIZE; i++) table[i] = nullptr;
     }
 
-    void put(string key, User* user) { /* TODO: LAB 2 */ }
+    // Chaining method to handle collisions 
+    void put(string key, User* user) { /* TODO: LAB 2 */ 
+        unsigned long index = hashFunction(key);
+        
+        // Create a new node for the user
+        HashNode* newNode = new HashNode(key, user);
+        
+        // Insert at the head of the linked list to handle collisions
+        newNode->next = table[index];
+        table[index] = newNode;
+    }
 
     User* get(string key) {
-        // --- TEMPORARY FALLBACK FOR LAB 1 ---
-        for(User* u : allUsers) {
-            if (u->username == key) return u;
+        // Get the array index using the hash function
+        unsigned long index = hashFunction(key);
+        
+        // Go directly to that specific bucket in the table
+        HashNode* current = table[index];
+        
+        // Go through the Linked List at that bucket (if there are collisions)
+        while (current != nullptr) {
+            if (current->key == key) {
+                return current->value; // If a user has been found
+            }
+            current = current->next;
         }
+    
         // TODO: LAB 2 - REPLACE ABOVE WITH HASH LOOKUP
         return nullptr;
     }
