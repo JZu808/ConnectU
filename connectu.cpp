@@ -40,7 +40,13 @@ struct Post {
         
     // TODO: LAB 3 - Implement Scoring Logic
     double getScore() {
-        return 0.0; 
+        long currentTime = time(0); // Get the current time in seconds
+        
+        // Calculate how old the post is in hours
+        double hoursOld = (currentTime - timestamp) / 3600.0; 
+        
+        // Implement formula: (Likes * 10) + (1000 / (HoursOld + 1))
+        return (likes * 10.0) + (1000.0 / (hoursOld + 1.0)); 
     }
 };
 
@@ -178,13 +184,65 @@ private:
     Post* heap[1000]; 
     int size;
 
-    void heapifyDown(int index) { /* TODO: LAB 3 */ }
-    void heapifyUp(int index) { /* TODO: LAB 3 */ }
+    void heapifyDown(int index) {
+        int leftChild = 2 * index + 1;
+        int rightChild = 2 * index + 2;
+        int largest = index;
+
+        // Check if the left child exists and has a larger score
+        if (leftChild < size && heap[leftChild]->getScore() > heap[largest]->getScore()) {
+            largest = leftChild;
+        }
+
+        // Check if the right child exists and has a larger score
+        if (rightChild < size && heap[rightChild]->getScore() > heap[largest]->getScore()) {
+            largest = rightChild;
+        }
+
+        // Bring the node down if it's smaller than its children 
+        if (largest != index) {
+            swap(heap[index], heap[largest]);
+            heapifyDown(largest); // Recursively check the next children
+        }
+    }
+    
+    void heapifyUp(int index) {
+        if (index == 0) return; // If root node has been reached
+        
+        int parentIndex = (index - 1) / 2; // Formula to find parent in an array 
+        
+        // If child post has higher score than parent, swap them
+        if (heap[index]->getScore() > heap[parentIndex]->getScore()) {
+            swap(heap[index], heap[parentIndex]);
+            heapifyUp(parentIndex); // Recursively check the next parent
+        }
+    }
+
+    
 
 public:
     FeedHeap() : size(0) {}
-    void push(Post* p) { /* TODO: LAB 3 */ }
-    Post* popMax() { return nullptr; /* TODO: LAB 3 */ }
+
+    void push(Post* p) { 
+        if (size >= 1000) return; // Prevent array going out of bounds
+        
+        heap[size] = p;   // Insert at the next available spot
+        heapifyUp(size);  // Bring it up to the correct spot
+        size++;           // Increase the size of our heap
+    }
+    Post* popMax() { 
+        if (size == 0) return nullptr;
+        
+        // Return the highest score (root node) and fix the heap 
+        Post* maxPost = heap[0];
+        
+        heap[0] = heap[size - 1]; // Move the very last post to the root
+        size--;                   // Decrease the size of the heap
+        
+        heapifyDown(0);           // Bring the new root down to its proper place
+        
+        return maxPost; 
+    }
     bool isEmpty() { return size == 0; }
 };
 
