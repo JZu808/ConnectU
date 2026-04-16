@@ -402,7 +402,54 @@ void addFriendship(User* requester, User* target) {
 void recommendFriends(User* startUser) {
     cout << "\n[GRAPH ANALYSIS] Finding friends of friends..." << endl;
     // TODO: LAB 5
+    // In case of no recommended friends
+    if (startUser == nullptr) return;
+
+    // Use a std::queue<User*> for BFS
+    queue<User*> q;
+    
+    // Use a std::set<int> visited to keep track of seen users
+    set<int> visited;
+
+    // Add the starting user to the visited set so they aren't recommended to themselves
+    visited.insert(startUser->userId);
+
+    // Start by adding all your direct friends to the queue
+    for (User* directFriend : startUser->getFriendsList()) {
+        q.push(directFriend);
+        // Mark direct friends as visited so we don't recommend people you're already friends with
+        visited.insert(directFriend->userId);
+    }
+
+    bool found = false;
+
+    // While the queue is not empty:
+    while (!q.empty()) {
+        // Dequeue a user
+        User* curr = q.front();
+        q.pop();
+
+        // Look at their friends 
+        for (User* fof : curr->getFriendsList()) {
+            
+            // If that person is not you, and not already your friend (not in the visited set)
+            if (visited.find(fof->userId) == visited.end()) {
+                
+                // Print them as a recommendation
+                cout << "- " << fof->username << endl;
+                
+                // Mark them as visited immediately to avoid printing duplicates
+                visited.insert(fof->userId);
+                found = true;
+            }
+        }
+    }
+
+    if (!found) {
+        cout << "  (No recommendations found.)" << endl;
+    }
 }
+
 
 // ==========================================
 // FILE I/O 
