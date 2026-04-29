@@ -27,6 +27,17 @@ using namespace std;
 // MODELS & DATA STRUCTURES
 // ==========================================
 
+// Lab 6 Comment struc
+struct Comment {
+    string username; 
+    string content;
+    long timestamp;
+    Comment* next;
+
+    Comment(string uname, string txt, long time)
+        : username(uname), content(txt), timestamp(time), next(nullptr) {}
+};
+
 struct Post { 
     int postId;
     int userId;
@@ -34,19 +45,45 @@ struct Post {
     int likes;
     long timestamp;
     Post* next; 
+    Comment* commentsHead; // NEW: Head of the comments linked list
 
+    // UPDATED Constructor
     Post(int pid, int uid, string txt, int lk, long time) 
-        : postId(pid), userId(uid), content(txt), likes(lk), timestamp(time), next(nullptr) {}
+        : postId(pid), userId(uid), content(txt), likes(lk), timestamp(time), next(nullptr), commentsHead(nullptr) {}
         
-    // TODO: LAB 3 - Implement Scoring Logic
     double getScore() {
-        long currentTime = time(0); // Get the current time in seconds
-        
-        // Calculate how old the post is in hours
+        long currentTime = time(0); 
         double hoursOld = (currentTime - timestamp) / 3600.0; 
-        
-        // Implement formula: (Likes * 10) + (1000 / (HoursOld + 1))
         return (likes * 10.0) + (1000.0 / (hoursOld + 1.0)); 
+    }
+
+    // NEW: Add a comment to the FRONT of the list (Most recent at the top)
+    void addComment(string uname, string txt) {
+        long timeNow = time(0);
+        Comment* newComment = new Comment(uname, txt, timeNow);
+        
+        newComment->next = commentsHead;
+        commentsHead = newComment;
+    }
+
+    // NEW: Traverse and print comments
+    void printComments() {
+        if (commentsHead == nullptr) {
+            cout << "\n--- Comments ---\n  (No comments)\n----------------\n";
+            return;
+        }
+        
+        cout << "\nComments Section:" << endl;
+        Comment* curr = commentsHead;
+
+        cout << "--------------------------\n";
+        while (curr != nullptr) {
+
+            cout << " @" << curr->username << ": " << curr->content << endl;
+            cout << "--------------------------\n";
+            curr = curr->next;
+        }
+        cout << "" << endl;
     }
 };
 
@@ -498,6 +535,29 @@ void loadData() {
         }
         postFile.close();
     }
+    // Lab 6
+    ifstream commFile("comments.csv");
+    if (commFile.is_open()) {
+        getline(commFile, line); // Skip header
+        while (getline(commFile, line)) {
+            vector<string> row = split(line);
+            if (row.size() < 4) continue;
+
+            int pid = stoi(row[0]);
+            string uname = row[1];
+            string content = row[2];
+            // Note: We don't need to save/load the timestamp manually if we 
+            // modify addComment to accept a timestamp, but for simplicity, 
+            // let's just add it to the post:
+            
+            Post* targetPost = findPostById(pid);
+            if (targetPost) {
+                // We add it to the post's linked list
+                targetPost->addComment(uname, content);
+            }
+        }
+        commFile.close();
+    }
 }
 
 void saveData() {
@@ -541,6 +601,29 @@ void saveData() {
     }
     postFile.close();
     cout << "Done." << endl;
+
+    // Save Comments
+    cout << "Saving comments..." << endl;
+    ofstream commFile("comments.csv");
+    commFile << "post_id,username,content,timestamp\n";
+    for (User* u : allUsers) {
+        Post* currPost = u->timeline.head;
+        while (currPost) {
+            Comment* currComm = currPost->commentsHead;
+            while (currComm) {
+                string safeComm = currComm->content;
+                if (safeComm.find(',') != string::npos) safeComm = "\"" + safeComm + "\"";
+                
+                commFile << currPost->postId << "," << currComm->username << "," 
+                         << safeComm << "," << currComm->timestamp << "\n";
+                currComm = currComm->next;
+            }
+            currPost = currPost->next;
+        }
+    }
+    commFile.close();
+    cout << "Done." << endl;
+
 }
 
 // ==========================================
@@ -611,12 +694,36 @@ void showUserDashboard(User* currentUser) {
             }
             if(count == 0) cout << "  No posts found." << endl;
             else {
-                cout << "\nDo you want to like a post? (y/n): ";
+                cout << "\nWould you like to \n(1) Like \n(2) View Comments \n(3) Return to Main Menu\n";
                 char resp; cin >> resp;
-                if (resp == 'y' || resp == 'Y') {
+                
+                if (resp == '1') {
                     int pid; cout << "Enter Post ID: "; cin >> pid;
                     Post* p = findPostById(pid);
                     if (p) { p->likes++; cout << "Liked!" << endl; }
+                    else { cout << "Post not found." << endl; }
+                }
+                else if (resp == '2') {
+                    int pid; cout << "Enter Post ID to view comments: "; cin >> pid;
+                    Post* p = findPostById(pid);
+                    
+                    if (p) {
+                        p->printComments(); // Shows comments from newest to oldest
+                        
+                        cout << "\nDo you want to make a comment? (y/n): ";
+                        char addComm; cin >> addComm;
+                        if (addComm == 'y' || addComm == 'Y') {
+                            cout << "Enter comment: ";
+                            cin.ignore(); // Clear the newline character from the buffer
+                            string commentTxt;
+                            getline(cin, commentTxt);
+                            
+                            p->addComment(currentUser->username, commentTxt);
+                            cout << "Comment added!" << endl;
+                        }
+                    } else {
+                        cout << "Post not found." << endl;
+                    }
                 }
             }
         }
