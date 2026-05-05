@@ -27,15 +27,20 @@ using namespace std;
 // MODELS & DATA STRUCTURES
 // ==========================================
 
-// Lab 6 Comment struc
+// Lab 6 Comment struct
 struct Comment {
+    int commentId;     // Unique ID to find and like comments
     string username; 
     string content;
+    int likes;         // Like counter
     long timestamp;
-    Comment* next;
+    
+    // Binary Tree pointers
+    Comment* left;
+    Comment* right;
 
-    Comment(string uname, string txt, long time)
-        : username(uname), content(txt), timestamp(time), next(nullptr) {}
+    Comment(int cid, string uname, string txt, int lks, long time)
+        : commentId(cid), username(uname), content(txt), likes(lks), timestamp(time), left(nullptr), right(nullptr) {}
 };
 
 struct Post { 
@@ -45,45 +50,62 @@ struct Post {
     int likes;
     long timestamp;
     Post* next; 
-    Comment* commentsHead; // NEW: Head of the comments linked list
+    
+    // NEW: BST Root for Comments and an ID tracker
+    Comment* commentsRoot;
+    int nextCommentId;
 
-    // UPDATED Constructor
     Post(int pid, int uid, string txt, int lk, long time) 
-        : postId(pid), userId(uid), content(txt), likes(lk), timestamp(time), next(nullptr), commentsHead(nullptr) {}
+        : postId(pid), userId(uid), content(txt), likes(lk), timestamp(time), next(nullptr), commentsRoot(nullptr), nextCommentId(1) {}
         
     double getScore() {
         long currentTime = time(0); 
         double hoursOld = (currentTime - timestamp) / 3600.0; 
         return (likes * 10.0) + (1000.0 / (hoursOld + 1.0)); 
     }
+};
 
-    // NEW: Add a comment to the FRONT of the list (Most recent at the top)
-    void addComment(string uname, string txt) {
-        long timeNow = time(0);
-        Comment* newComment = new Comment(uname, txt, timeNow);
-        
-        newComment->next = commentsHead;
-        commentsHead = newComment;
+
+// HELPER FUNCTIONS:
+
+// Recursive function to insert a comment into the BST by commentId
+Comment* insertCommentBST(Comment* root, Comment* newComment) {
+    if (root == nullptr) return newComment;
+
+    if (newComment->commentId < root->commentId) {
+        root->left = insertCommentBST(root->left, newComment);
+    } else if (newComment->commentId > root->commentId) {
+        root->right = insertCommentBST(root->right, newComment);
     }
+    return root;
+}
 
-    // NEW: Traverse and print comments
-    void printComments() {
-        if (commentsHead == nullptr) {
-            cout << "\n--- Comments ---\n  (No comments)\n----------------\n";
-            return;
+// Function to find a comment by ID to like it
+Comment* findCommentBST(Comment* root, int targetId) {
+    if (root == nullptr || root->commentId == targetId) {
+        return root;
+    }
+    
+    if (targetId < root->commentId) {
+        return findCommentBST(root->left, targetId);
+    }
+    return findCommentBST(root->right, targetId);
+}
+
+// Comparator for "Top Comments"
+struct CompareTopComments {
+    bool operator()(Comment* a, Comment* b) {
+        if (a->likes == b->likes) {
+            return a->timestamp < b->timestamp; // Tie-breaker: newest
         }
-        
-        cout << "\nComments Section:" << endl;
-        Comment* curr = commentsHead;
+        return a->likes < b->likes; 
+    }
+};
 
-        cout << "--------------------------\n";
-        while (curr != nullptr) {
-
-            cout << " @" << curr->username << ": " << curr->content << endl;
-            cout << "--------------------------\n";
-            curr = curr->next;
-        }
-        cout << "" << endl;
+// Comparator for "New Comments"
+struct CompareNewComments {
+    bool operator()(Comment* a, Comment* b) {
+        return a->timestamp < b->timestamp; 
     }
 };
 
@@ -108,6 +130,88 @@ string timeAgo(long timestamp) {
         char buffer[80];
         strftime(buffer, 80, "%Y-%m-%d", localtime(&t));
         return string(buffer);
+    }
+}
+
+template <typename PQ_Type>
+void loadCommentsIntoPQ(Comment* root, PQ_Type& pq) {
+    if (root == nullptr) return;
+    
+    loadCommentsIntoPQ(root->left, pq);
+    pq.push(root);
+    loadCommentsIntoPQ(root->right, pq);
+}
+
+void viewCommentsMenu(Post* post, string currentUsername) {
+    int sortChoice = 1; // 1 for Top (Default), 2 for New
+    
+    while (true) {
+        cout << "\n--- COMMENTS FOR POST " << post->postId << " ---" << endl;
+        
+        if (post->commentsRoot == nullptr) {
+            cout << "No comments yet. Be the first!" << endl;
+        } else {
+            // Setup the chosen Priority Queue
+            if (sortChoice == 1) {
+                cout << "[ Sorted by: TOP COMMENTS ]\n";
+                priority_queue<Comment*, vector<Comment*>, CompareTopComments> pqTop;
+                loadCommentsIntoPQ(post->commentsRoot, pqTop);
+                
+                while (!pqTop.empty()) {
+                    Comment* c = pqTop.top();
+                    pqTop.pop();
+                    cout << "[ID: " << c->commentId << "] " << c->username 
+                         << " (" << c->likes << " likes): " << c->content << endl;
+                }
+            } else {
+                cout << "[ Sorted by: NEW COMMENTS ]\n";
+                priority_queue<Comment*, vector<Comment*>, CompareNewComments> pqNew;
+                loadCommentsIntoPQ(post->commentsRoot, pqNew);
+                
+                while (!pqNew.empty()) {
+                    Comment* c = pqNew.top();
+                    pqNew.pop();
+                    cout << "[ID: " << c->commentId << "] " << c->username 
+                         << " (" << c->likes << " likes): " << c->content << endl;
+                }
+            }
+        }
+        
+        cout << "\n1. Write a Comment\n2. Like a Comment\n3. Sort by Top\n4. Sort by New\n5. Go Back\nSelect >> ";
+        int choice;
+        cin >> choice;
+        
+        if (choice == 1) {
+            string text;
+            cout << "Enter comment: ";
+            cin.ignore();
+            getline(cin, text);
+            
+            // Create and insert into BST
+            Comment* newC = new Comment(post->nextCommentId++, currentUsername, text, 0, time(0));
+            post->commentsRoot = insertCommentBST(post->commentsRoot, newC);
+            cout << "Comment posted!" << endl;
+            
+        } else if (choice == 2) {
+            int cid;
+            cout << "Enter Comment ID to like: ";
+            cin >> cid;
+            
+            Comment* target = findCommentBST(post->commentsRoot, cid);
+            if (target) {
+                target->likes++;
+                cout << "Liked comment " << cid << "!" << endl;
+            } else {
+                cout << "Comment ID not found." << endl;
+            }
+            
+        } else if (choice == 3) {
+            sortChoice = 1;
+        } else if (choice == 4) {
+            sortChoice = 2;
+        } else if (choice == 5) {
+            break;
+        }
     }
 }
 
@@ -552,12 +656,40 @@ void loadData() {
             
             Post* targetPost = findPostById(pid);
             if (targetPost) {
-                // We add it to the post's linked list
-                targetPost->addComment(uname, content);
+                // Read from CSV format: post_id,comment_id,username,content,likes,timestamp
+                // Assuming you've adjusted comments.csv to match this!
+                int cid = stoi(row[1]);
+                string uname = row[2];
+                string content = row[3];
+                int lks = stoi(row[4]);
+                long ts = stol(row[5]);
+
+                Comment* newC = new Comment(cid, uname, content, lks, ts);
+                targetPost->commentsRoot = insertCommentBST(targetPost->commentsRoot, newC);
+                
+                // Track highest ID to prevent overlaps
+                if (cid >= targetPost->nextCommentId) {
+                    targetPost->nextCommentId = cid + 1;
+                }
             }
         }
         commFile.close();
     }
+}
+
+void saveCommentsBST(ofstream& commFile, int postId, Comment* root) {
+    if (root == nullptr) return;
+    
+    // In-order traversal
+    saveCommentsBST(commFile, postId, root->left);
+    
+    string safeComm = root->content;
+    if (safeComm.find(',') != string::npos) safeComm = "\"" + safeComm + "\"";
+    
+    commFile << postId << "," << root->commentId << "," << root->username << "," 
+             << safeComm << "," << root->likes << "," << root->timestamp << "\n";
+             
+    saveCommentsBST(commFile, postId, root->right);
 }
 
 void saveData() {
@@ -602,22 +734,14 @@ void saveData() {
     postFile.close();
     cout << "Done." << endl;
 
-    // Save Comments
+    // Save Comments LAB 6
     cout << "Saving comments..." << endl;
     ofstream commFile("comments.csv");
-    commFile << "post_id,username,content,timestamp\n";
+    commFile << "post_id,comment_id,username,content,likes,timestamp\n";
     for (User* u : allUsers) {
         Post* currPost = u->timeline.head;
         while (currPost) {
-            Comment* currComm = currPost->commentsHead;
-            while (currComm) {
-                string safeComm = currComm->content;
-                if (safeComm.find(',') != string::npos) safeComm = "\"" + safeComm + "\"";
-                
-                commFile << currPost->postId << "," << currComm->username << "," 
-                         << safeComm << "," << currComm->timestamp << "\n";
-                currComm = currComm->next;
-            }
+            saveCommentsBST(commFile, currPost->postId, currPost->commentsRoot);
             currPost = currPost->next;
         }
     }
@@ -708,19 +832,7 @@ void showUserDashboard(User* currentUser) {
                     Post* p = findPostById(pid);
                     
                     if (p) {
-                        p->printComments(); // Shows comments from newest to oldest
-                        
-                        cout << "\nDo you want to make a comment? (y/n): ";
-                        char addComm; cin >> addComm;
-                        if (addComm == 'y' || addComm == 'Y') {
-                            cout << "Enter comment: ";
-                            cin.ignore(); // Clear the newline character from the buffer
-                            string commentTxt;
-                            getline(cin, commentTxt);
-                            
-                            p->addComment(currentUser->username, commentTxt);
-                            cout << "Comment added!" << endl;
-                        }
+                        viewCommentsMenu(p, currentUser->username); 
                     } else {
                         cout << "Post not found." << endl;
                     }
