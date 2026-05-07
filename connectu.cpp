@@ -51,7 +51,7 @@ struct Post {
     long timestamp;
     Post* next; 
     
-    // NEW: BST Root for Comments and an ID tracker
+    // NEW: BST Root for Comments and an ID tracker LAB 6
     Comment* commentsRoot;
     int nextCommentId;
 
@@ -68,7 +68,7 @@ struct Post {
 
 // HELPER FUNCTIONS:
 
-// Recursive function to insert a comment into the BST by commentId
+// LAB 6 Recursive function to insert a comment into the BST by commentId
 Comment* insertCommentBST(Comment* root, Comment* newComment) {
     if (root == nullptr) return newComment;
 
@@ -80,7 +80,7 @@ Comment* insertCommentBST(Comment* root, Comment* newComment) {
     return root;
 }
 
-// Function to find a comment by ID to like it
+// LAB 6 Function to find a comment by ID to like it
 Comment* findCommentBST(Comment* root, int targetId) {
     if (root == nullptr || root->commentId == targetId) {
         return root;
@@ -92,7 +92,7 @@ Comment* findCommentBST(Comment* root, int targetId) {
     return findCommentBST(root->right, targetId);
 }
 
-// Comparator for "Top Comments"
+// LAB 6 Comparator for "Top Comments"
 struct CompareTopComments {
     bool operator()(Comment* a, Comment* b) {
         if (a->likes == b->likes) {
@@ -102,7 +102,7 @@ struct CompareTopComments {
     }
 };
 
-// Comparator for "New Comments"
+// LAB 6 Comparator for "New Comments"
 struct CompareNewComments {
     bool operator()(Comment* a, Comment* b) {
         return a->timestamp < b->timestamp; 
@@ -133,6 +133,7 @@ string timeAgo(long timestamp) {
     }
 }
 
+// LAB 6
 template <typename PQ_Type>
 void loadCommentsIntoPQ(Comment* root, PQ_Type& pq) {
     if (root == nullptr) return;
@@ -142,6 +143,7 @@ void loadCommentsIntoPQ(Comment* root, PQ_Type& pq) {
     loadCommentsIntoPQ(root->right, pq);
 }
 
+// LAB 6
 void viewCommentsMenu(Post* post, string currentUsername) {
     int sortChoice = 1; // 1 for Top (Default), 2 for New
     
@@ -149,7 +151,7 @@ void viewCommentsMenu(Post* post, string currentUsername) {
         cout << "\n--- COMMENTS FOR POST " << post->postId << " ---" << endl;
         
         if (post->commentsRoot == nullptr) {
-            cout << "No comments yet. Be the first!" << endl;
+            cout << "No comments yet." << endl;
         } else {
             // Setup the chosen Priority Queue
             if (sortChoice == 1) {
@@ -177,7 +179,7 @@ void viewCommentsMenu(Post* post, string currentUsername) {
             }
         }
         
-        cout << "\n1. Write a Comment\n2. Like a Comment\n3. Sort by Top\n4. Sort by New\n5. Go Back\nSelect >> ";
+        cout << "\n1. Write a Comment\n2. Like a Comment\n3. Sort by Top\n4. Sort by New\n5. Return to Main Menu\nSelect >> ";
         int choice;
         cin >> choice;
         
@@ -639,7 +641,7 @@ void loadData() {
         }
         postFile.close();
     }
-    // Lab 6
+    // LAB 6
     ifstream commFile("comments.csv");
     if (commFile.is_open()) {
         getline(commFile, line); // Skip header
@@ -677,6 +679,7 @@ void loadData() {
     }
 }
 
+// LAB 6
 void saveCommentsBST(ofstream& commFile, int postId, Comment* root) {
     if (root == nullptr) return;
     
@@ -818,7 +821,7 @@ void showUserDashboard(User* currentUser) {
             }
             if(count == 0) cout << "  No posts found." << endl;
             else {
-                cout << "\nWould you like to \n(1) Like \n(2) View Comments \n(3) Return to Main Menu\n";
+                cout << "\nOptions: \n(1) Like \n(2) View Comments \n(3) Return to Main Menu\n";
                 char resp; cin >> resp;
                 
                 if (resp == '1') {
@@ -827,6 +830,7 @@ void showUserDashboard(User* currentUser) {
                     if (p) { p->likes++; cout << "Liked!" << endl; }
                     else { cout << "Post not found." << endl; }
                 }
+                // LAB 6
                 else if (resp == '2') {
                     int pid; cout << "Enter Post ID to view comments: "; cin >> pid;
                     Post* p = findPostById(pid);
